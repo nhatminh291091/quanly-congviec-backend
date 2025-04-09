@@ -218,5 +218,42 @@ router.post('/:id/plan', async (req, res) => {
     res.status(500).json({ error: 'Failed to add task to plans' });
   }
 });
+// Lọc các công việc sắp đến hạn (trong vòng 7 ngày)
+const moment = require('moment');
+
+router.get('/upcoming', async (req, res) => {
+  try {
+    const { access_token } = req.user;
+    const sheetData = await sheetsService.getManagementSheet(access_token);
+
+    const headers = sheetData[0];
+    const rows = sheetData.slice(1);
+
+    const indexTenCV = headers.indexOf('Tên công việc');
+    const indexLinhVuc = headers.indexOf('Các lĩnh vực công tác');
+    const indexThoiGian = headers.indexOf('Thời gian hoàn thành');
+
+    if (indexTenCV === -1 || indexLinhVuc === -1 || indexThoiGian === -1) {
+      return res.status(400).json({ error: 'Thiếu cột bắt buộc trong sheet' });
+    }
+
+    const upcomingTasks = rows.filter(row => {
+      const deadline = row[indexThoiGian];
+      if (!deadline) return false;
+
+      const date = moment(deadline, 'DD/MM/YYYY');
+      return date.isValid() && date.diff(moment(), 'days') <= 7 && date.diff(moment(), 'days') >= 0;
+    }).map(row => ({
+      tenCongViec: row[indexTenCV] || '',
+      linhVuc: row[indexLinhVuc] || '',
+      thoiGianHoanThanh: row[indexThoiGian] || ''
+    }));
+
+    res.json(upcomingTasks);
+  } catch (error) {
+    console.error('Lỗi lấy công việc sắp đến hạn:', error);
+    res.status(500).json({ error: 'Không thể lấy dữ liệu upcoming' });
+  }
+});
 
 module.exports = router;
