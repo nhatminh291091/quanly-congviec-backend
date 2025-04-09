@@ -241,7 +241,7 @@ router.get('/upcoming', async (req, res) => {
       const deadline = row[indexThoiGian];
       if (!deadline) return false;
 
-      const date = moment(deadline, 'DD/MM/YYYY');
+      const date = moment(deadline, ['DD/MM/YYYY', 'D/M/YYYY', 'YYYY-MM-DD'], true);
       return date.isValid() && date.diff(moment(), 'days') <= 7 && date.diff(moment(), 'days') >= 0;
     }).map(row => ({
       tenCongViec: row[indexTenCV] || '',
