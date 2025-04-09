@@ -51,4 +51,21 @@ router.post('/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
+// Nhận googleToken từ frontend và trả về { user, token }
+router.post('/auth/google', async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token từ Google không được cung cấp.' });
+  }
+
+  try {
+    const result = await authService.handleGoogleCallback(token); // xử lý Google token
+    res.json(result); // result = { user, token }
+  } catch (error) {
+    console.error('Lỗi xác thực Google:', error.message);
+    res.status(401).json({ error: 'Xác thực Google thất bại' });
+  }
+});
+
 module.exports = router;
