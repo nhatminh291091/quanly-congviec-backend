@@ -52,7 +52,7 @@ router.post('/logout', (req, res) => {
 });
 
 // Nhận googleToken từ frontend và trả về { user, token }
-router.post('/auth/google', async (req, res) => {
+router.post('/google', async (req, res) => {
   const { token } = req.body;
 
   if (!token) {
