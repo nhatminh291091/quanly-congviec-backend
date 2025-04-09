@@ -60,10 +60,10 @@ router.post('/auth/google', async (req, res) => {
   }
 
   try {
-    const result = await authService.handleGoogleCallback(token); // xử lý Google token
-    res.json(result); // result = { user, token }
+    const result = await authService.verifyGoogleIdToken(token); // ✅ dùng hàm mới
+    res.json(result);
   } catch (error) {
-    console.error('Lỗi xác thực Google:', error.message);
+    console.error('Lỗi xác thực Google ID Token:', error.message);
     res.status(401).json({ error: 'Xác thực Google thất bại' });
   }
 });
