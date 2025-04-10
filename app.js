@@ -1,19 +1,21 @@
-require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const path = require('path');
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const tasksRoutes = require('./routes/tasks');
-const reportsRoutes = require('./routes/reports');
-const sheetsRoutes = require('./routes/sheets');
-const statisticsRoutes = require('./routes/statistics');
-
-// Create Express app
 const app = express();
+
+const allowedOrigins = ['https://quanly-congviec-frontend.vercel.app'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
 
 // Middleware
 app.use(helmet()); // Security headers
