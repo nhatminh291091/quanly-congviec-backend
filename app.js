@@ -13,8 +13,6 @@ const statisticsRoutes = require('./routes/statistics');
 const app = express();
 
 // 👉 CORS cấu hình theo Vercel frontend
-const cors = require('cors');
-
 app.use(cors({
   origin: ['https://quanly-congviec-frontend.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
