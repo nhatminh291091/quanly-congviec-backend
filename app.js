@@ -14,7 +14,11 @@ const statisticRoutes = require('./routes/statistics');
 const app = express();
 
 // Middleware
-app.use(cors({ origin: 'https://quanly-congviec-frontend.vercel.app' }));
+app.use(cors({ 
+origin: 'https://quanly-congviec-frontend.vercel.app',
+methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+allowedHeaders:['Content-Type','Authorization']
+}));
 app.use(helmet());
 app.use(morgan('combined'));
 app.use(express.json());
