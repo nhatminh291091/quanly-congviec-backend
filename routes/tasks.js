@@ -4,26 +4,33 @@ const router = express.Router();
 const { google } = require('googleapis');
 const moment = require('moment');
 
+// 🌐 Đảm bảo biến môi trường quan trọng
+const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+const privateKeyRaw = process.env.GOOGLE_PRIVATE_KEY;
+const spreadsheetId = process.env.SPREADSHEET_ID;
+if (!serviceEmail || !privateKeyRaw || !spreadsheetId) {
+  console.error('Thiếu biến môi trường: GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY hoặc SPREADSHEET_ID');
+  throw new Error('Thiếu cấu hình Google Sheets API.');
+}
+
+// Xử lý private key đúng định dạng (thay chuỗi "\\n" thành line break)
+const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+
 // Khởi tạo Google Sheets client với Service Account
 const auth = new google.auth.JWT(
-  process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  serviceEmail,
   null,
-  process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  privateKey,
   ['https://www.googleapis.com/auth/spreadsheets']
 );
 const sheets = google.sheets({ version: 'v4', auth });
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID;
-const SHEET_RANGE = 'QUANLY!A:L'; // Điều chỉnh theo sheet của bạn
+const SHEET_RANGE = 'QUANLY!A:L'; // Điều chỉnh vùng dữ liệu
 
-// GET: Lấy tất cả tasks (không cần xác thực)
+// GET: Lấy tất cả tasks
 router.get('/', async (req, res) => {
   try {
     const { linhVuc, fromDate, toDate } = req.query;
-
-    const resp = await sheets.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: SHEET_RANGE,
-    });
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: SHEET_RANGE });
     const rows = resp.data.values || [];
     if (!rows.length) return res.json([]);
 
@@ -34,11 +41,8 @@ router.get('/', async (req, res) => {
       return obj;
     });
 
-    // Filter theo lĩnh vực
-    if (linhVuc) {
-      tasksJson = tasksJson.filter(t => t['Các lĩnh vực công tác']?.includes(linhVuc));
-    }
-    // Filter theo khoảng ngày hoàn thành
+    // Filter
+    if (linhVuc) tasksJson = tasksJson.filter(t => t['Các lĩnh vực công tác']?.includes(linhVuc));
     if (fromDate && toDate) {
       const start = moment(fromDate, 'YYYY-MM-DD');
       const end = moment(toDate, 'YYYY-MM-DD');
@@ -59,21 +63,15 @@ router.get('/', async (req, res) => {
 router.post('/add', async (req, res) => {
   try {
     const { tenCongViec, linhVuc, thoiGianHoanThanh } = req.body;
-    // Validate
     if (!tenCongViec || !linhVuc || !thoiGianHoanThanh) {
-      return res.status(400).json({
-        error: 'Thiếu thông tin bắt buộc',
-        requiredFields: ['tenCongViec', 'linhVuc', 'thoiGianHoanThanh']
-      });
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc', requiredFields: ['tenCongViec','linhVuc','thoiGianHoanThanh'] });
     }
     if (!moment(thoiGianHoanThanh, ['DD/MM/YYYY','D/M/YYYY','YYYY-MM-DD'], true).isValid()) {
       return res.status(400).json({ error: 'Định dạng ngày không hợp lệ' });
     }
 
-    // Fetch headers để xác định vị trí cột
-    const sheetResp = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: SHEET_RANGE });
+    const sheetResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: SHEET_RANGE });
     const headers = sheetResp.data.values[0] || [];
-    // Xây row mới dựa theo headers
     const newRow = headers.map(h => {
       if (h === 'Tên công việc') return tenCongViec;
       if (h === 'Các lĩnh vực công tác') return linhVuc;
@@ -81,12 +79,7 @@ router.post('/add', async (req, res) => {
       return '';
     });
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: SHEET_RANGE,
-      valueInputOption: 'RAW',
-      resource: { values: [newRow] }
-    });
+    await sheets.spreadsheets.values.append({ spreadsheetId, range: SHEET_RANGE, valueInputOption: 'RAW', resource: { values: [newRow] } });
     res.status(201).json({ success: true, message: 'Đã thêm task' });
   } catch (err) {
     console.error('Lỗi thêm task:', err);
@@ -97,7 +90,7 @@ router.post('/add', async (req, res) => {
 // GET: Tasks sắp đến hạn
 router.get('/upcoming', async (req, res) => {
   try {
-    const sheetResp = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: SHEET_RANGE });
+    const sheetResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: SHEET_RANGE });
     const rows = sheetResp.data.values || [];
     if (rows.length < 2) return res.json([]);
 
@@ -106,7 +99,6 @@ router.get('/upcoming', async (req, res) => {
     const idxName = headers.indexOf('Tên công việc');
     const idxLinhVuc = headers.indexOf('Các lĩnh vực công tác');
     const idxTime = headers.indexOf('Thời gian hoàn thành');
-
     if (idxName < 0 || idxLinhVuc < 0 || idxTime < 0) {
       return res.status(400).json({ error: 'Thiếu cột bắt buộc trong sheet' });
     }
