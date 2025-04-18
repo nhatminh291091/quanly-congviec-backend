@@ -1,29 +1,30 @@
-// ✅ utils/sheetReader.js — Đọc Google Sheet công khai qua gviz API
-const fetch = require('node-fetch');
+// 📁 utils/sheetReader.js
+const { google } = require('googleapis');
+const sheets = google.sheets('v4');
 
-class SheetReader {
-  constructor(sheetId, sheetName) {
-    this.sheetId = sheetId;
-    this.sheetName = sheetName;
-  }
+const SHEET_ID = '1V4vduiq2a2zL020mWmd1MSFoknfL2XLTSOdD0c2dPoI';
+const DULIEU_RANGE = 'DULIEU!E2:E';
 
-  async read() {
-    const url = `https://docs.google.com/spreadsheets/d/${this.sheetId}/gviz/tq?tqx=out:json&sheet=${this.sheetName}`;
-    const res = await fetch(url);
-    const text = await res.text();
-    const json = JSON.parse(text.substring(47).slice(0, -2));
-
-    const cols = json.table.cols.map(col => col.label);
-    const rows = json.table.rows.map(row => {
-      const item = {};
-      row.c.forEach((cell, i) => {
-        item[cols[i]] = cell?.v || '';
-      });
-      return item;
-    });
-
-    return rows;
-  }
+async function authorize() {
+  const auth = new google.auth.GoogleAuth({
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  });
+  return await auth.getClient();
 }
 
-module.exports = SheetReader;
+async function getChuyenVienList() {
+  const authClient = await authorize();
+  const response = await sheets.spreadsheets.values.get({
+    auth: authClient,
+    spreadsheetId: SHEET_ID,
+    range: DULIEU_RANGE,
+  });
+
+  const rows = response.data.values || [];
+  const chuyenVien = [...new Set(rows.flat().filter(name => !!name && name.trim() !== ''))];
+  return chuyenVien;
+}
+
+module.exports = {
+  getChuyenVienList,
+};
