@@ -1,7 +1,6 @@
 // 📁 File: routes/staff.js (bạn tạo mới file này trong backend)
 const express = require('express');
 const { google } = require('googleapis');
-const auth = require('../config/auth'); // Đường dẫn nối với Google Sheets API auth
 
 const router = express.Router();
 
