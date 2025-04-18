@@ -31,13 +31,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/sheets', sheetRoutes);
 app.use('/api/statistics', statisticRoutes);
 app.use('/api/staff', staffRoutes);
-// Serve static files in production
-// if (process.env.NODE_ENV === 'production') {
-//   app.use(express.static(path.join(__dirname, '../client/build')));
-//   app.get('*', (req, res) => {
-//     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-//   });
-// }
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
