@@ -10,7 +10,7 @@ const taskRoutes = require('./routes/tasks');
 const reportRoutes = require('./routes/reports');
 const sheetRoutes = require('./routes/sheets');
 const statisticRoutes = require('./routes/statistics');
-
+const staffRoutes = require('./routes/staff');
 const app = express();
 
 // Middleware
@@ -30,7 +30,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/sheets', sheetRoutes);
 app.use('/api/statistics', statisticRoutes);
-
+app.use('/api/staff', staffRoutes);
 // Serve static files in production
 // if (process.env.NODE_ENV === 'production') {
 //   app.use(express.static(path.join(__dirname, '../client/build')));
