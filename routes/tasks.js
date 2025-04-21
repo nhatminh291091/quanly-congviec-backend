@@ -12,7 +12,7 @@ if (!serviceEmail || !privateKeyRaw || !spreadsheetId) {
   throw new Error('Thiếu cấu hình Google Sheets API.');
 }
 
-const privateKey = privateKeyRaw.replace(/\n/g, '\n');
+const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
 const auth = new google.auth.JWT(serviceEmail, null, privateKey, ['https://www.googleapis.com/auth/spreadsheets']);
 const sheets = google.sheets({ version: 'v4', auth });
 const SHEET_RANGE = 'QUANLY!A:L';
