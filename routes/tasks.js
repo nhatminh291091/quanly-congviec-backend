@@ -17,8 +17,76 @@ const auth = new google.auth.JWT(serviceEmail, null, privateKey, ['https://www.g
 const sheets = google.sheets({ version: 'v4', auth });
 const SHEET_RANGE = 'QUANLY!A:L';
 
-// ... các route khác giữ nguyên
+// GET: Lấy tất cả công việc
+router.get('/', async (req, res) => {
+  try {
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: SHEET_RANGE });
+    const rows = resp.data.values || [];
+    if (!rows.length) return res.json([]);
 
+    const headers = rows[0];
+    const data = rows.slice(1);
+    const tasksJson = data.map(row => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = row[i] || '');
+      return obj;
+    });
+
+    res.json(tasksJson);
+  } catch (err) {
+    console.error('Lỗi lấy tasks:', err);
+    res.status(500).json({ error: 'Không thể lấy tasks', details: err.message });
+  }
+});
+
+// POST: Thêm công việc mới
+router.post('/add', async (req, res) => {
+  try {
+    const {
+      tenCongViec,
+      linhVuc,
+      tienDo,
+      chuTri,
+      thoiGianHoanThanh,
+      nguoiThucHien
+    } = req.body;
+
+    if (!tenCongViec || !linhVuc || !tienDo || !chuTri || !nguoiThucHien || !nguoiThucHien.length) {
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc' });
+    }
+
+    if (thoiGianHoanThanh && !moment(thoiGianHoanThanh, ['DD/MM/YYYY', 'D/M/YYYY', 'YYYY-MM-DD'], true).isValid()) {
+      return res.status(400).json({ error: 'Định dạng ngày không hợp lệ' });
+    }
+
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: SHEET_RANGE });
+    const headers = resp.data.values[0];
+
+    const newRow = headers.map(h => {
+      if (h === 'Tên công việc') return tenCongViec;
+      if (h === 'Các lĩnh vực công tác') return linhVuc;
+      if (h === 'Tiến độ') return tienDo;
+      if (h === 'Người chủ trì') return chuTri;
+      if (h === 'Người thực hiện') return nguoiThucHien.join('; ');
+      if (h === 'Thời gian hoàn thành') return thoiGianHoanThanh || '';
+      return '';
+    });
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: SHEET_RANGE,
+      valueInputOption: 'RAW',
+      resource: { values: [newRow] }
+    });
+
+    res.status(201).json({ success: true, message: 'Đã thêm task' });
+  } catch (err) {
+    console.error('Lỗi thêm task:', err);
+    res.status(500).json({ error: 'Không thể thêm task', details: err.message });
+  }
+});
+
+// POST: Cập nhật báo cáo
 router.post('/update-bao-cao', async (req, res) => {
   try {
     const { tenCongViec, tienDo, moTa, tonTai, thoiGian, deXuat, danhGia } = req.body;
@@ -70,6 +138,35 @@ router.post('/update-bao-cao', async (req, res) => {
   } catch (err) {
     console.error('Lỗi cập nhật báo cáo:', err);
     res.status(500).json({ error: 'Lỗi khi cập nhật báo cáo', details: err.message });
+  }
+});
+
+// GET: Tasks sắp đến hạn
+router.get('/upcoming', async (req, res) => {
+  try {
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: SHEET_RANGE });
+    const rows = resp.data.values || [];
+    if (rows.length < 2) return res.json([]);
+
+    const headers = rows[0];
+    const data = rows.slice(1);
+    const idxTime = headers.indexOf('Thời gian hoàn thành');
+    const idxName = headers.indexOf('Tên công việc');
+    const idxLinhVuc = headers.indexOf('Các lĩnh vực công tác');
+
+    const result = data.filter(r => {
+      const d = moment(r[idxTime], ['DD/MM/YYYY', 'D/M/YYYY', 'YYYY-MM-DD'], true);
+      return d.isValid() && d.diff(moment(), 'days') >= 0 && d.diff(moment(), 'days') <= 7;
+    }).map(r => ({
+      tenCongViec: r[idxName] || '',
+      linhVuc: r[idxLinhVuc] || '',
+      thoiGianHoanThanh: r[idxTime] || ''
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error('Lỗi lấy upcoming:', err);
+    res.status(500).json({ error: 'Không thể lấy dữ liệu upcoming', details: err.message });
   }
 });
 
