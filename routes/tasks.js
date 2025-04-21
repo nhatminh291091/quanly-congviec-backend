@@ -62,30 +62,51 @@ router.get('/', async (req, res) => {
 // POST: Thêm mới task
 router.post('/add', async (req, res) => {
   try {
-    const { tenCongViec, linhVuc, thoiGianHoanThanh } = req.body;
-    if (!tenCongViec || !linhVuc || !thoiGianHoanThanh) {
-      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc', requiredFields: ['tenCongViec','linhVuc','thoiGianHoanThanh'] });
+    const {
+      tenCongViec,
+      linhVuc,
+      tienDo,
+      chuTri,
+      thoiGianHoanThanh,
+      nguoiThucHien
+    } = req.body;
+
+    if (!tenCongViec || !linhVuc || !tienDo || !chuTri || !nguoiThucHien || !nguoiThucHien.length) {
+      return res.status(400).json({ error: 'Thiếu thông tin bắt buộc' });
     }
-    if (!moment(thoiGianHoanThanh, ['DD/MM/YYYY','D/M/YYYY','YYYY-MM-DD'], true).isValid()) {
+
+    // Nếu có thoiGianHoanThanh thì kiểm tra định dạng
+    if (thoiGianHoanThanh && !moment(thoiGianHoanThanh, ['DD/MM/YYYY', 'D/M/YYYY', 'YYYY-MM-DD'], true).isValid()) {
       return res.status(400).json({ error: 'Định dạng ngày không hợp lệ' });
     }
 
     const sheetResp = await sheets.spreadsheets.values.get({ spreadsheetId, range: SHEET_RANGE });
     const headers = sheetResp.data.values[0] || [];
+
     const newRow = headers.map(h => {
       if (h === 'Tên công việc') return tenCongViec;
       if (h === 'Các lĩnh vực công tác') return linhVuc;
-      if (h === 'Thời gian hoàn thành') return thoiGianHoanThanh;
+      if (h === 'Tiến độ') return tienDo;
+      if (h === 'Người chủ trì') return chuTri;
+      if (h === 'Người thực hiện') return nguoiThucHien.join('; ');
+      if (h === 'Thời gian hoàn thành') return thoiGianHoanThanh || '';
       return '';
     });
 
-    await sheets.spreadsheets.values.append({ spreadsheetId, range: SHEET_RANGE, valueInputOption: 'RAW', resource: { values: [newRow] } });
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: SHEET_RANGE,
+      valueInputOption: 'RAW',
+      resource: { values: [newRow] }
+    });
+
     res.status(201).json({ success: true, message: 'Đã thêm task' });
   } catch (err) {
     console.error('Lỗi thêm task:', err);
     res.status(500).json({ error: 'Không thể thêm task', details: err.message });
   }
 });
+
 
 // GET: Tasks sắp đến hạn
 router.get('/upcoming', async (req, res) => {
