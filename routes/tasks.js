@@ -139,5 +139,55 @@ router.get('/upcoming', async (req, res) => {
     res.status(500).json({ error: 'Không thể lấy dữ liệu upcoming', details: err.message });
   }
 });
+router.post('/update-bao-cao', async (req, res) => {
+  try {
+    const { tenCongViec, moTa, tonTai, thoiGian, deXuat, danhGia } = req.body;
+    if (!tenCongViec) {
+      return res.status(400).json({ error: 'Thiếu tên công việc' });
+    }
+
+    const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range: SHEET_RANGE });
+    const rows = resp.data.values || [];
+    const headers = rows[0];
+    const data = rows.slice(1);
+
+    const idx = data.findIndex(r => r[headers.indexOf('Tên công việc')]?.trim() === tenCongViec.trim());
+    if (idx === -1) return res.status(404).json({ error: 'Không tìm thấy công việc' });
+
+    const rowNumber = idx + 2; // +1 vì header, +1 vì bắt đầu từ hàng 1
+
+    const updates = {
+      'Mô tả kết quả thực hiện': moTa,
+      'Tồn tại, nguyên nhân': tonTai,
+      'Thời gian hoàn thành': thoiGian,
+      'Đề xuất, kiến nghị': deXuat,
+      'Đánh giá kết quả': danhGia
+    };
+
+    const requests = Object.entries(updates).map(([field, value]) => {
+      const colIndex = headers.indexOf(field);
+      if (colIndex === -1) return null;
+      const colLetter = String.fromCharCode(65 + colIndex); // A=65
+      return {
+        range: `${SHEET_RANGE.split('!')[0]}!${colLetter}${rowNumber}`,
+        values: [[value || '']]
+      };
+    }).filter(r => r !== null);
+
+    for (const r of requests) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: r.range,
+        valueInputOption: 'RAW',
+        resource: { values: r.values }
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Lỗi cập nhật báo cáo:', err);
+    res.status(500).json({ error: 'Lỗi khi cập nhật báo cáo', details: err.message });
+  }
+});
 
 module.exports = router;
