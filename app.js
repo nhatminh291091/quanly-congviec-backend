@@ -11,6 +11,7 @@ const reportRoutes = require('./routes/reports');
 const sheetRoutes = require('./routes/sheets');
 const statisticRoutes = require('./routes/statistics');
 const staffRoutes = require('./routes/staff');
+const tonghopRoutes = require('./routes/tonghop');
 const app = express();
 
 // Middleware
@@ -31,6 +32,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/sheets', sheetRoutes);
 app.use('/api/statistics', statisticRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/tonghop', tonghopRoutes);
 
 
 // Error handling middleware
